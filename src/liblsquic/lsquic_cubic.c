@@ -13,6 +13,10 @@
 #include <vc_compat.h>
 #endif
 
+// MY header
+#include <sys/un.h>
+
+
 #include "lsquic_int_types.h"
 #include "lsquic_types.h"
 #include "lsquic_hash.h"
@@ -103,6 +107,32 @@ cubic_update (struct lsquic_cubic *cubic, lsquic_time_t now, unsigned n_bytes)
         target = TCP_MSS;
 
     cubic->cu_cwnd = target;
+    
+    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    const char* socket_path = "/tmp/my_socket";
+    if (sockfd < 0) {
+        LSQ_DEBUG("Error opening UNIX socket");
+        // LSQ_DEBUG("fdskj");
+    }
+
+    // Connect to the Node server
+    struct sockaddr_un serv_addr;
+    serv_addr.sun_family = AF_UNIX;   // convert to UNIX
+    strcpy(serv_addr.sun_path, socket_path);
+
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        // perror("Error connecting");
+        LSQ_DEBUG("Error connecting to socket.");
+    }
+
+        // Send the TCP variable
+    if (send(sockfd, cubic->cu_cwnd, sizeof(cubic->cu_cwnd), 0) < 0) {
+        LSQ_DEBUG("Could not send message on socket.");
+    }
+
+    LSQ_DEBUG("Cwnd sent.");
+    close(sockfd);
+
 }
 
 
